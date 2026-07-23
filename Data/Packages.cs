@@ -331,7 +331,20 @@ public static class Packages
                 [PackageManagerKind.Pacman] = ["curl -fsSL https://opencode.ai/install.sh | sh"],
                 [PackageManagerKind.Brew] = ["curl -fsSL https://opencode.ai/install.sh | sh"],
             },
-            PostInstallMessage = "Add ~/.opencode/bin to your PATH if not already present.",
+            PostInstallMessage = "Add ~/.opencode/bin to my PATH if not already present.",
+        },
+        new()
+        {
+            Id = "herdr", DisplayName = "herdr", Category = "tool",
+            CheckCommand = "command -v herdr",
+            InstallCommands =
+            {
+                [PackageManagerKind.Dnf] = ["curl -fsSL https://herdr.dev/install.sh | sh"],
+                [PackageManagerKind.Apt] = ["curl -fsSL https://herdr.dev/install.sh | sh"],
+                [PackageManagerKind.Pacman] = ["curl -fsSL https://herdr.dev/install.sh | sh"],
+                [PackageManagerKind.Brew] = ["curl -fsSL https://herdr.dev/install.sh | sh"],
+            },
+            PostInstallMessage = "Run 'herdr plugin install cloudmanic/herdr-plus' and 'herdr plugin install persiyanov/herdr-reviewr' for plugins.",
         },
     ];
 }

@@ -45,4 +45,4 @@ dotfiles install --skip-stow   # Only install deps, skip stow
 |----------|----------|
 | System   | git, neovim, eza, bat, fd, fzf, tmux, fastfetch, stow, zsh, java, curl, wget |
 | Runtime  | Go, Node.js, .NET SDK, Flutter (all via mise) |
-| Tools    | Rust (rustup), starship, zoxide, atuin, mise, opencode |
+| Tools    | Rust (rustup), starship, zoxide, atuin, mise, opencode, herdr |
