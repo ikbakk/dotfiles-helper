@@ -136,7 +136,14 @@ public static class StowService
 
         try
         {
-            File.Copy(zshrcSource, zshrcTarget, overwrite: true);
+            if (File.Exists(zshrcTarget))
+            {
+                var linkTarget = default(string?);
+                try { linkTarget = System.IO.File.ResolveLinkTarget(zshrcTarget, false)?.FullName; } catch { }
+                if (linkTarget is not null)
+                    File.Delete(zshrcTarget);
+            }
+            File.Copy(zshrcSource, zshrcTarget);
             AnsiConsole.MarkupLine($"  Deployed [cyan]{Path.GetFileName(zshrcSource)}[/] → [grey]{zshrcTarget}[/]");
             return true;
         }
