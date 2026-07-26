@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Spectre.Console;
 using DotfilesCli.Models;
 
@@ -23,11 +24,12 @@ public static class StowService
         stowDirs.AddRange(subdirs);
 
         var targetDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var ignorePatterns = LoadStowIgnore(Path.Combine(repoPath, ".stow-local-ignore"));
         var backupDir = default(string?);
 
         foreach (var dir in stowDirs)
         {
-            var conflicts = FindConflicts(Path.Combine(repoPath, dir), targetDir);
+            var conflicts = FindConflicts(Path.Combine(repoPath, dir), targetDir, ignorePatterns, dir == ".");
 
             if (conflicts.Count > 0)
             {
@@ -65,7 +67,7 @@ public static class StowService
         return success;
     }
 
-    private static List<string> FindConflicts(string sourceDir, string targetDir)
+    private static List<string> FindConflicts(string sourceDir, string targetDir, List<Regex> ignorePatterns, bool isRoot)
     {
         var conflicts = new List<string>();
         if (!Directory.Exists(sourceDir))
@@ -74,6 +76,9 @@ public static class StowService
         foreach (var file in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(sourceDir, file);
+            if (ignorePatterns.Any(p => p.IsMatch(relative)))
+                continue;
+
             var dest = Path.Combine(targetDir, relative);
 
             if (File.Exists(dest))
@@ -85,6 +90,23 @@ public static class StowService
             }
         }
         return conflicts;
+    }
+
+    private static List<Regex> LoadStowIgnore(string ignoreFilePath)
+    {
+        var patterns = new List<Regex>();
+        if (!File.Exists(ignoreFilePath))
+            return patterns;
+
+        foreach (var line in File.ReadAllLines(ignoreFilePath))
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#'))
+                continue;
+            try { patterns.Add(new Regex(trimmed, RegexOptions.Compiled)); }
+            catch { }
+        }
+        return patterns;
     }
 
     private static string CreateBackupDir()
