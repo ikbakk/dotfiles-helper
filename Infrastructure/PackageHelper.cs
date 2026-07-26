@@ -70,10 +70,11 @@ public static class PackageHelper
     public static async Task InstallMissingPackagesAsync(
         List<Package> missing,
         PackageManagerKind pm,
-        bool isLinux)
+        DeviceInfo device)
     {
         if (missing.Count == 0) return;
 
+        var isLinux = device.Os == OsKind.Linux;
         var needSudo = missing.Any(p => p.NeedsSudo);
 
         if (needSudo && isLinux)
@@ -90,6 +91,10 @@ public static class PackageHelper
             }
         }
 
+        var aurHelper = await ResolveAurHelperAsync(device);
+
+        var total = missing.Count;
+
         await AnsiConsole.Progress()
             .Columns(
                 new TaskDescriptionColumn(),
@@ -98,18 +103,30 @@ public static class PackageHelper
                 new ElapsedTimeColumn())
             .StartAsync(async ctx =>
             {
-                var task = ctx.AddTask("Installing packages", maxValue: missing.Count);
+                var task = ctx.AddTask("Starting...", maxValue: total);
 
-                foreach (var pkg in missing)
+                for (var i = 0; i < total; i++)
                 {
-                    task.Description = $"[cyan]{pkg.DisplayName}[/]";
+                    var pkg = missing[i];
+                    task.Description = $"Installing [cyan]{pkg.DisplayName}[/] ({i + 1}/{total})";
+
                     var commands = pkg.InstallCommands.GetValueOrDefault(pm, []);
 
                     foreach (var cmd in commands)
                     {
                         var exitCode = await RunInstallCommandAsync(cmd);
                         if (exitCode != 0)
-                            AnsiConsole.MarkupLine($"  [red]Failed:[/] {cmd}");
+                        {
+                            if (aurHelper is not null)
+                            {
+                                var aurCmd = cmd.Replace("pacman", aurHelper);
+                                AnsiConsole.MarkupLine($"  [yellow]Retrying with {aurHelper}...[/]");
+                                exitCode = await RunInstallCommandAsync(aurCmd);
+                            }
+
+                            if (exitCode != 0)
+                                AnsiConsole.MarkupLine($"  [red]Failed:[/] {cmd}");
+                        }
                     }
 
                     if (!string.IsNullOrEmpty(pkg.PostInstallMessage))
@@ -120,5 +137,26 @@ public static class PackageHelper
             });
 
         AnsiConsole.MarkupLine("\n[bold green]All packages installed![/]\n");
+    }
+
+    private static Task<string?> ResolveAurHelperAsync(DeviceInfo device)
+    {
+        if (device.PackageManager != PackageManagerKind.Pacman)
+            return Task.FromResult<string?>(null);
+
+        var helpers = device.AvailableAurHelpers;
+        if (helpers.Count == 0)
+            return Task.FromResult<string?>(null);
+
+        if (helpers.Count == 1)
+        {
+            AnsiConsole.MarkupLine($"  [grey]AUR helper detected:[/] [cyan]{helpers[0]}[/]");
+            return Task.FromResult<string?>(helpers[0]);
+        }
+
+        return Task.FromResult<string?>(AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Multiple AUR helpers detected. Which one should I use?")
+                .AddChoices(helpers)));
     }
 }

@@ -31,12 +31,17 @@ public static class OsDetector
             }
         }
 
+        if (string.IsNullOrEmpty(distroId) && File.Exists("/etc/arch-release"))
+        {
+            distroId = "arch";
+        }
+
         var pm = distroId switch
         {
             "fedora" => PackageManagerKind.Dnf,
             "rhel" or "centos" => PackageManagerKind.Dnf,
             "ubuntu" or "pop" or "debian" or "linuxmint" or "elementary" => PackageManagerKind.Apt,
-            "arch" or "endeavouros" or "manjaro" => PackageManagerKind.Pacman,
+            "arch" or "cachyos" or "endeavouros" or "manjaro" => PackageManagerKind.Pacman,
             _ => PackageManagerKind.Dnf,
         };
 
@@ -46,6 +51,17 @@ public static class OsDetector
             DistroId = distroId,
             DistroVersion = distroVersion,
             PackageManager = pm,
+            AvailableAurHelpers = pm == PackageManagerKind.Pacman ? DetectAurHelpers() : [],
         };
+    }
+
+    private static List<string> DetectAurHelpers()
+    {
+        var helpers = new List<string>(2);
+        if (File.Exists("/usr/bin/paru") || File.Exists("/usr/local/bin/paru"))
+            helpers.Add("paru");
+        if (File.Exists("/usr/bin/yay") || File.Exists("/usr/local/bin/yay"))
+            helpers.Add("yay");
+        return helpers;
     }
 }

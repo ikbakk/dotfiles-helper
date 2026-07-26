@@ -85,7 +85,7 @@ public class InstallCommand : AsyncCommand<InstallSettings>
                 return 1;
             }
 
-            await PackageHelper.InstallMissingPackagesAsync(missing, device.PackageManager, device.Os == OsKind.Linux);
+            await PackageHelper.InstallMissingPackagesAsync(missing, device.PackageManager, device);
         }
 
         if (!settings.SkipStow)
@@ -109,6 +109,8 @@ public class InstallCommand : AsyncCommand<InstallSettings>
                     AnsiConsole.MarkupLine("[bold green]✓ Dotfiles stowed successfully![/]");
                 else
                     AnsiConsole.MarkupLine("[bold red]✗ Some directories failed to stow.[/]");
+
+                StowService.DeployZshConfig(repoPath, device);
             }
         }
 

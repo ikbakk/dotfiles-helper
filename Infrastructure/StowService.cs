@@ -1,4 +1,5 @@
 using Spectre.Console;
+using DotfilesCli.Models;
 
 namespace DotfilesCli.Infrastructure;
 
@@ -37,6 +38,35 @@ public static class StowService
         }
 
         return success;
+    }
+
+    public static bool DeployZshConfig(string repoPath, DeviceInfo device)
+    {
+        var zshrcSource = device.PackageManager switch
+        {
+            PackageManagerKind.Pacman => Path.Combine(repoPath, ".zshrc.arch"),
+            _ => Path.Combine(repoPath, ".zshrc.fedora"),
+        };
+
+        if (!File.Exists(zshrcSource))
+        {
+            AnsiConsole.MarkupLine($"[yellow]No distro-specific .zshrc found at {zshrcSource}; keeping existing.[/]");
+            return false;
+        }
+
+        var zshrcTarget = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".zshrc");
+
+        try
+        {
+            File.Copy(zshrcSource, zshrcTarget, overwrite: true);
+            AnsiConsole.MarkupLine($"  Deployed [cyan]{Path.GetFileName(zshrcSource)}[/] → [grey]{zshrcTarget}[/]");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Failed to deploy .zshrc:[/] {ex.Message}");
+            return false;
+        }
     }
 
     private static int RunProcess(string fileName, string args, out string output)

@@ -63,8 +63,7 @@ public class DoctorCommand : AsyncCommand<DoctorSettings>
             AnsiConsole.WriteLine();
             if (AnsiConsole.Confirm("Install missing packages?", false))
             {
-                var isLinux = device.Os == Models.OsKind.Linux;
-                await PackageHelper.InstallMissingPackagesAsync(missing, device.PackageManager, isLinux);
+                await PackageHelper.InstallMissingPackagesAsync(missing, device.PackageManager, device);
             }
         }
 

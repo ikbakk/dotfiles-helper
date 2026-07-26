@@ -24,6 +24,7 @@ public class DeviceInfo
     public string DistroVersion { get; init; } = "";
     public PackageManagerKind PackageManager { get; init; }
     public bool HasSudo { get; init; }
+    public List<string> AvailableAurHelpers { get; init; } = [];
 }
 
 public class Package
