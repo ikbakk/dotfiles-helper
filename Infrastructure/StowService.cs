@@ -13,15 +13,14 @@ public static class StowService
             return false;
         }
 
-        var dirs = Directory.GetDirectories(repoPath)
+        var stowDirs = new List<string> { "." };
+
+        var subdirs = Directory.GetDirectories(repoPath)
             .Select(Path.GetFileName)
             .Where(d => d is not null && !d.StartsWith('.'))
-            .Cast<string>()
-            .ToList();
+            .Cast<string>();
 
-        var stowDirs = dirs.Count == 0
-            ? ["."]
-            : dirs;
+        stowDirs.AddRange(subdirs);
 
         var success = true;
         foreach (var dir in stowDirs)
