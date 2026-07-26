@@ -22,12 +22,35 @@ public static class StowService
 
         stowDirs.AddRange(subdirs);
 
+        var targetDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var backupDir = default(string?);
+
+        foreach (var dir in stowDirs)
+        {
+            var conflicts = FindConflicts(Path.Combine(repoPath, dir), targetDir);
+
+            if (conflicts.Count > 0)
+            {
+                backupDir ??= CreateBackupDir();
+                foreach (var conflict in conflicts)
+                {
+                    var dest = Path.Combine(targetDir, conflict);
+                    var backupPath = Path.Combine(backupDir, conflict);
+                    var backupParent = Path.GetDirectoryName(backupPath)!;
+                    Directory.CreateDirectory(backupParent);
+                    File.Copy(dest, backupPath, overwrite: true);
+                    AnsiConsole.MarkupLine($"  [yellow]Backed up[/] [grey]{conflict}[/]");
+                    File.Delete(dest);
+                }
+            }
+        }
+
         var success = true;
         foreach (var dir in stowDirs)
         {
             AnsiConsole.MarkupLine($"  Stowing [cyan]{dir}[/]...");
 
-            var result = RunProcess("stow", $"--adopt --no-folding --dir={repoPath} --target={Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)} {dir}", out var output);
+            var result = RunProcess("stow", $"--no-folding --dir={repoPath} --target={targetDir} {dir}", out var output);
 
             if (result != 0)
             {
@@ -36,7 +59,41 @@ public static class StowService
             }
         }
 
+        if (backupDir is not null)
+            AnsiConsole.MarkupLine($"  [grey]Backups saved to[/] [cyan]{backupDir}[/]");
+
         return success;
+    }
+
+    private static List<string> FindConflicts(string sourceDir, string targetDir)
+    {
+        var conflicts = new List<string>();
+        if (!Directory.Exists(sourceDir))
+            return conflicts;
+
+        foreach (var file in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(sourceDir, file);
+            var dest = Path.Combine(targetDir, relative);
+
+            if (File.Exists(dest))
+            {
+                var linkTarget = default(string?);
+                try { linkTarget = System.IO.File.ResolveLinkTarget(dest, false)?.FullName; } catch { }
+                if (linkTarget != file)
+                    conflicts.Add(relative);
+            }
+        }
+        return conflicts;
+    }
+
+    private static string CreateBackupDir()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var dir = Path.Combine(home, ".dotfiles-backup", timestamp);
+        Directory.CreateDirectory(dir);
+        return dir;
     }
 
     public static bool DeployZshConfig(string repoPath, DeviceInfo device)
